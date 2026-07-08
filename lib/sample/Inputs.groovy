@@ -42,6 +42,16 @@ class Inputs {
         return pipeline_path ?: user_provided_path
     }
 
+    public static Object preferRealignedOrUserInput(Object pipeline_path, Map meta, FileKey key, boolean realign_bam) {
+        // When realigning from BAM/CRAM, the sample sheet BAM/CRAM is the alignment *source*, not a downstream
+        // input to be reused. In that case always use the pipeline-produced (realigned, then REDUX-processed) path.
+        // Otherwise, fall back to the standard behaviour of preferring a user-provided input over the pipeline path.
+        if (realign_bam) {
+            return pipeline_path
+        }
+        return preferUserProvidedInput(pipeline_path, meta, key)
+    }
+
 
     // Files - REDUX
     public static List<Object> resolveReduxBamBai(List<Object> redux_bam_bai, Map meta, SampleType sample_type) {
