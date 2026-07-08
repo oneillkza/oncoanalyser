@@ -20,7 +20,7 @@
                     "mimetype": "text/csv",
                     "pattern": "^\\S+\\.csv$",
                     "description": "Path to comma-separated file containing information about the samples in the experiment.",
-                    "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 3 columns, and a header row. See [usage docs](https://nf-co.re/oncoanalyser/usage#samplesheet-input).",
+                    "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 3 columns, and a header row.",
                     "fa_icon": "fas fa-file-csv"
                 },
                 "outdir": {
@@ -142,6 +142,12 @@
                 "redux_generate_tsvs_only": {
                     "type": "boolean",
                     "description": "When running REDUX, generate REDUX TSVs from existing REDUX BAMs. Use this when you have old REDUX BAMs missing the associated TSV files (e.g. *.bqr.tsv)",
+                    "default": false,
+                    "fa_icon": "fas fa-cog"
+                },
+                "realign_bam": {
+                    "type": "boolean",
+                    "description": "Realign input BAM/CRAM files by streaming through samtools fastq into the aligner. Currently only supported in wgts mode.",
                     "default": false,
                     "fa_icon": "fas fa-cog"
                 },
@@ -344,7 +350,7 @@
                     "description": "Base directory for Institutional configs.",
                     "default": "https://raw.githubusercontent.com/nf-core/configs/master",
                     "hidden": true,
-                    "help_text": "If you're running offline, Nextflow will not be able to fetch the institutional config files from the internet. If you don't need them, then this is not a problem. If you do need them, you should download the files from the repo and tell Nextflow where to find them with this parameter.",
+                    "help_text": "If you're running offline, Nextflow will not be able to fetch the institutional config files from the internet. If you don't need them, then this is not a problem. If you do need them, you should download the files from the repo and tell Nextflow where to find them with the `custom_config_base` option. For example: `params.custom_config_base = '/path/to/local/configs'`.",
                     "fa_icon": "fas fa-users-cog"
                 },
                 "config_profile_name": {
