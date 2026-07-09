@@ -8,11 +8,13 @@ import util.Messages
 
 class PrepareReferenceConfig {
 
-    public static Map<String, Boolean> forPipelineRun(List<Map> inputs, PipelineMode pipeline_mode, Map<String, Boolean> stages) {
+    public static Map<String, Boolean> forPipelineRun(List<Map> inputs, PipelineMode pipeline_mode, Map<String, Boolean> stages, boolean realign_bam = false) {
 
         def has_dna = inputs.any { Inputs.hasTumorDna(it) }
         def has_rna_fastq = inputs.any { Inputs.hasTumorRnaFastq(it) }
         def has_dna_fastq = inputs.any { Inputs.hasTumorDnaFastq(it) || Inputs.hasNormalDnaFastq(it) }
+        def has_dna_bam = inputs.any { Inputs.hasTumorDnaBam(it) || Inputs.hasNormalDnaBam(it) || Inputs.hasDonorDnaBam(it) }
+        def has_rna_bam = inputs.any { Inputs.hasTumorRnaBam(it) }
 
         return [
             require_fasta: true,
@@ -20,8 +22,8 @@ class PrepareReferenceConfig {
             require_dict: true,
             require_img: true,
 
-            require_bwamem2_index: has_dna_fastq && stages.alignment,
-            require_star_index: has_rna_fastq && stages.alignment,
+            require_bwamem2_index: stages.alignment && (has_dna_fastq || (realign_bam && has_dna_bam)),
+            require_star_index: stages.alignment && (has_rna_fastq || (realign_bam && has_rna_bam)),
 
             require_gridss_index: has_dna && pipeline_mode == PipelineMode.WGTS && stages.virusinterpreter,
             require_hmftools_data: true,

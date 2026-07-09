@@ -6,7 +6,7 @@ import util.Messages
 
 class SampleSheet {
 
-    public static List<Map> parse(String sample_sheet_path, PipelineMode pipeline_mode) {
+    public static List<Map> parse(String sample_sheet_path, PipelineMode pipeline_mode, boolean realign_bam = false) {
 
         if (!sample_sheet_path) {
             throw new IllegalStateException("Missing required --input argument")
@@ -45,7 +45,7 @@ class SampleSheet {
                     def meta_sample = meta[sample_key]
 
                     // NOTE(LN): The order in which these methods are executed is important
-                    checkAndSetFileIndexes(meta_sample)
+                    checkAndSetFileIndexes(meta_sample, realign_bam)
                     setCramPaths(meta_sample)
                     checkRawReadDataExists(meta_sample, group_id)
                     setReduxTsvDirIfUnset(meta_sample)
@@ -217,7 +217,7 @@ class SampleSheet {
 
     }
 
-    private static void checkAndSetFileIndexes(Map meta_sample) {
+    private static void checkAndSetFileIndexes(Map meta_sample, boolean realign_bam = false) {
 
         // NOTE(LN): Cast keys to list to avoid ConcurrentModificationException
         meta_sample.keySet().toList().each { key ->
@@ -235,6 +235,15 @@ class SampleSheet {
                 index_extension = 'crai'
             } else {
                 // Key not a file type, or not a file type that needs an index
+                return
+            }
+
+            if (
+                realign_bam &&
+                (key === FileType.BAM || key === FileType.CRAM)
+            ) {
+                // In realign mode BAM/CRAM inputs are streamed through samtools for re-alignment,
+                // so pre-existing BAM/CRAM indexes are not required from the sample sheet.
                 return
             }
 

@@ -2,16 +2,6 @@
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    nf-core/oncoanalyser
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Github : https://github.com/nf-core/oncoanalyser
-    Website: https://nf-co.re/oncoanalyser
-    Slack  : https://nfcore.slack.com/channels/oncoanalyser
-----------------------------------------------------------------------------------------
-*/
-
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     IMPORT FUNCTIONS / MODULES / SUBWORKFLOWS / WORKFLOWS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
@@ -81,7 +71,7 @@ workflow NFCORE_ONCOANALYSER {
         PREPARE_REFERENCE()
     } else {
 
-        def inputs = samplesheet.SampleSheet.parse(params.input, pipeline_mode)
+        def inputs = samplesheet.SampleSheet.parse(params.input, pipeline_mode, params.realign_bam)
 
         def stages = pipeline.RunStage.getValidatedRunStages(
            params.processes_include,

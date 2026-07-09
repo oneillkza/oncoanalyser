@@ -59,7 +59,7 @@ Below is a brief description of each argument:
 
 - `-revision`: `oncoanalyser` version to run (can be a git [tag](https://github.com/nf-core/oncoanalyser/tags), [branch](https://github.com/nf-core/oncoanalyser/branches), or commit hash)
 - `-profile`: [configuration presets](#-profile) for different compute environments
-- `-config`: one or more comma separated configuration files for customising e.g. genome/tool [reference data](#configuring-reference-data), [custom panels](#custom-panels) reference, [compute resources](#compute-resources), or [other configuration](#custom-configuration)
+- `-config`: one or more comma separated configuration files for customising e.g. genome/tool [reference data](#configuring-reference-data), [custom panels](#custom-panels) reference, [compute resources](./usage/compute_resources.md), or process specific [containers](./usage/containers.md)
 - `--mode`: [pipeline mode](#pipeline-modes)
 - `--genome`: genome version, typically `GRCh38_hmf` or `GRCh37_hmf`
 - `--input`: the [samplesheet](#samplesheet) containing sample details and corresponding files to be analysed
@@ -118,13 +118,13 @@ nextflow pull nf-core/oncoanalyser
 
 ### Reproducibility
 
-It is a good idea to specify the pipeline version when running the pipeline on your data. This ensures that a specific version of the pipeline code and software are used when you run your pipeline. If you keep using the same tag, you'll be running the same version of the pipeline, even if there have been changes to the code since.
+It is a good idea to specify the pipeline version when running the pipeline on your data. This ensures that a specific version of the pipeline code and software are used when you run your pipeline. If you keep using the pipeline without specifying a version, there is a chance that in the future your command could run with a different version than what you intended if the pipeline code is updated. This could lead to reproducibility issues.
 
-First, go to the [nf-core/oncoanalyser releases page](https://github.com/nf-core/oncoanalyser/releases) and find the latest pipeline version - numeric only (e.g. `3.0.0`). Then specify this when running the pipeline with `-revision` (one hyphen) - e.g. `-revision 3.0.0`. Of course, you can switch to another version by changing the number after the `-revision` flag.
+First, go to the [nf-core/oncoanalyser releases page](https://github.com/nf-core/oncoanalyser/releases) and find the latest pipeline version - numeric only (e.g. `3.0.0`). Then specify this when running the pipeline with the `-revision` parameter.
 
 This version number will be logged in reports when you run the pipeline, so that you'll know what you used when you look back in the future. For example, in the `<outdir>/pipeline_info/software_versions.yml` file.
 
-To further assist in reproducibility, you can share and re-use [parameter files](#running-the-pipeline) to repeat pipeline runs with the same settings without having to write out a command with every single parameter.
+To further assist in reproducibility, you can share and re-use [parameter files](#running-the-pipeline) to repeat pipeline runs with the same settings without having to write out a command with every parameter.
 
 :::tip
 
@@ -161,16 +161,16 @@ nextflow run nf-core/oncoanalyser \
 The samplesheet contains information in CSV format for each sample to be analysed by `oncoanalyser`, and uses a header
 row as the first line with the below columns:
 
-| Column          | Description                                                                                                                                                                                                                                                                                                                                                       |
-|:----------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `group_id`      | Groups `sample_id` entries into the same analysis                                                                                                                                                                                                                                                                                                                 |
-| `subject_id`    | Must be the same value within each `group_id`                                                                                                                                                                                                                                                                                                                     |
-| `sample_id`     | Sample identifier                                                                                                                                                                                                                                                                                                                                                 |
-| `sample_type`   | Sample type: `tumor`, `normal`, or `tumor_normal`                                                                                                                                                                                                                                                                                                                 |
-| `sequence_type` | Sequence type: `dna`, `rna`, or `dna_rna`                                                                                                                                                                                                                                                                                                                         |
-| `filetype`      | File type: e.g. `fastq`, `bam`, `bai`. All valid values can be found [here](../lib/samplesheet/FileType.groovy).                                                                                                                                                                                                                                                  |
-| `info`          | Additional sample info in the form `<key1>:<value1>;<key1>:<value2>;...`. Valid keys: `lane` and `library_id` for [FASTQ](#fastq) files, `longitudinal_sample` for mode [purity_estimate](#purity-estimate), `cancer_type` as a DOID that is passed to ORANGE (details in [readme](https://github.com/hartwigmedical/hmftools/tree/master/orange#running-orange)) |
-| `filepath`      | Absolute filepath to input file. Can be a local path, URL (e.g. http://, https://, ftp://) or cloud URI (e.g. gs://, s3://)                                                                                                                                                                                                                                       |
+| Column          | Description                                                                                                                                                                     |
+|:----------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `group_id`      | Groups `sample_id` entries into the same analysis                                                                                                                               |
+| `subject_id`    | Must be the same value within each `group_id`                                                                                                                                   |
+| `sample_id`     | Sample identifier                                                                                                                                                               |
+| `sample_type`   | Sample type: `tumor`, `normal`, or `tumor_normal`                                                                                                                               |
+| `sequence_type` | Sequence type: `dna`, `rna`, or `dna_rna`                                                                                                                                       |
+| `filetype`      | File type: e.g. `fastq`, `bam`, `bai`. All valid values can be found [here](../lib/samplesheet/FileType.groovy).                                                              |
+| `info`          | Additional sample info in the form `<key1>:<value1>;<key1>:<value2>;...`. Valid keys: `lane` and `library_id` for [FASTQ](#fastq) files, `longitudinal_sample` for mode [purity_estimate](#purity-estimate), and `cancer_type` for [CUPPA](#whole-genome--transcriptome-sequencing-wgts) |
+| `filepath`      | Absolute filepath to input file. Can be a local path, URL (e.g. http://, https://, ftp://) or cloud URI (e.g. gs://, s3://)                                                 |
 
 Output file paths are constructed based on `group_id` and `sample_id`:
 
@@ -262,6 +262,18 @@ This performance issue is due to how CRAM reading is implemented in
 used throughout the WiGiTS tools). We plan to address this issue in future releases of `oncoanalyser`.
 
 :::
+
+#### BAM / CRAM but realign
+
+To run from BAM or CRAM inputs but force re-alignment, specify `bam` or `cram` in the `filetype` field as usual and run the pipeline with:
+
+```bash
+--realign_bam
+```
+
+This causes `oncoanalyser` to stream reads directly from the input BAM/CRAM through `samtools fastq` into the DNA or RNA aligner, rather than treating the supplied BAM/CRAM as the downstream alignment input.
+
+Currently, `--realign_bam` is only supported in `--mode wgts`.
 
 #### REDUX BAM / CRAM
 
@@ -452,16 +464,16 @@ space.
 The below table shows the possible values for `--ref_data_types`. Note that multiple can be provided as comma separated
 list, e.g. `--ref_data_types wgs,dna_alignment`
 
-| Value                              | Description                                                                                                                          | Combination of                                            |
-|:-----------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------|:----------------------------------------------------------|
+| Value                              | Description                                                                                                                          | Combination of        |
+|:-----------------------------------|:-------------------------------------------------------------------------------------------------------------------------------------|:----------------------|
 | `wgs`                              | Ref data for WGS analysis from BAM                                                                                                   | `fasta`, `fai`, `dict`, `img`, `hmftools`, `gridss_index` |
-| `wts`                              | Ref data for WTS analysis from BAM                                                                                                   | `fasta`, `fai`, `dict`, `img`, `hmftools`                 |
-| `targeted`                         | Ref data for targeted analysis from BAM                                                                                              | `fasta`, `fai`, `dict`, `img`, `hmftools`, `panel`        |
-| `bwamem2_index` or `dna_alignment` | BWA-MEM2 index. Required if aligning DNA FASTQs                                                                                      |                                                           |
-| `star_index` or `rna_alignment`    | STAR index. Required if aligning RNA FASTQs                                                                                          |                                                           |
-| `gridss_index`                     | GRIDSS index. Required if running Virusbreakend/Virusinterpreter                                                                     |                                                           |
-| `hmftools`                         | [WiGiTS](https://github.com/hartwigmedical/hmftools) resources files                                                                 |                                                           |
-| `panel`                            | Panel ref data. Please also specify arg `--panel <name>`,  e.g. `--panel TSO500` (must be a [supported](#targeted-sequencing) panel) |                                                           |
+| `wts`                              | Ref data for WTS analysis from BAM                                                                                                   | `fasta`, `fai`, `dict`, `img`, `hmftools` |
+| `targeted`                         | Ref data for targeted analysis from BAM                                                                                              | `fasta`, `fai`, `dict`, `img`, `hmftools`, `panel` |
+| `bwamem2_index` or `dna_alignment` | BWA-MEM2 index. Required if aligning DNA FASTQs                                                                                      |                       |
+| `star_index` or `rna_alignment`    | STAR index. Required if aligning RNA FASTQs                                                                                          |                       |
+| `gridss_index`                     | GRIDSS index. Required if running Virusbreakend/Virusinterpreter                                                                     |                       |
+| `hmftools`                         | [WiGiTS](https://github.com/hartwigmedical/hmftools) resources files                                                                 |                       |
+| `panel`                            | Panel ref data. Please also specify arg `--panel <name>`,  e.g. `--panel TSO500` (must be a [supported](#targeted-sequencing) panel) |                       |
 
 #### Manual staging
 
@@ -569,30 +581,30 @@ haplotypes since this requires careful processing and is hence left to the user.
 
 _GRCh37 genome (Hartwig): `GRCh37_hmf`_
 
-| Type                 | Link                                                                                                                                                                                                |
-| :------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FASTA                | [Homo_sapiens.GRCh37.GATK.illumina.fasta](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh37_hmf/24.0/Homo_sapiens.GRCh37.GATK.illumina.fasta)                                      |
-| FASTA index          | [Homo_sapiens.GRCh37.GATK.illumina.fasta.fai](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh37_hmf/24.0/samtools_index/1.16/Homo_sapiens.GRCh37.GATK.illumina.fasta.fai)          |
-| FASTA seq dictionary | [Homo_sapiens.GRCh37.GATK.illumina.fasta.dict](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh37_hmf/24.0/samtools_index/1.16/Homo_sapiens.GRCh37.GATK.illumina.fasta.dict)        |
+| Type                 | Link |
+| :------------------- | :--- |
+| FASTA                | [Homo_sapiens.GRCh37.GATK.illumina.fasta](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh37_hmf/24.0/Homo_sapiens.GRCh37.GATK.illumina.fasta) |
+| FASTA index          | [Homo_sapiens.GRCh37.GATK.illumina.fasta.fai](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh37_hmf/24.0/samtools_index/1.16/Homo_sapiens.GRCh37.GATK.illumina.fasta.fai) |
+| FASTA seq dictionary | [Homo_sapiens.GRCh37.GATK.illumina.fasta.dict](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh37_hmf/24.0/samtools_index/1.16/Homo_sapiens.GRCh37.GATK.illumina.fasta.dict) |
 | BWA-MEM index image  | [Homo_sapiens.GRCh37.GATK.illumina.fasta.img](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh37_hmf/24.0/bwa_index_image/0.7.17-r1188/Homo_sapiens.GRCh37.GATK.illumina.fasta.img) |
-| BWA-MEM2 index       | [bwa-mem2_index-2.2.1.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh37_hmf/25.1/bwa-mem2_index-2.2.1.tar.gz)                                                              |
-| GRIDSS index         | [gridss_index-2.13.2.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh37_hmf/25.1/gridss_index-2.13.2.tar.gz)                                                                |
-| STAR index           | [star_index-gencode_19-2.7.3a.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh37_hmf/25.1/star_index-gencode_19-2.7.3a.tar.gz)                                              |
-| WiGiTS data          | [hmf_pipeline_resources.37_v2.3.0--2.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/hmf_reference_data/hmftools/hmf_pipeline_resources.37_v2.3.0--2.tar.gz)                            |
-| TSO500 panel data    | [hmf_panel_resources.tso500.37_v2.3.0--2.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/hmf_reference_data/panels/hmf_panel_resources.tso500.37_v2.3.0--2.tar.gz)                      |
+| BWA-MEM2 index       | [bwa-mem2_index-2.2.1.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh37_hmf/25.1/bwa-mem2_index-2.2.1.tar.gz) |
+| GRIDSS index         | [gridss_index-2.13.2.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh37_hmf/25.1/gridss_index-2.13.2.tar.gz) |
+| STAR index           | [star_index-gencode_19-2.7.3a.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh37_hmf/25.1/star_index-gencode_19-2.7.3a.tar.gz) |
+| WiGiTS data          | [hmf_pipeline_resources.37_v2.3.0--2.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/hmf_reference_data/hmftools/hmf_pipeline_resources.37_v2.3.0--2.tar.gz) |
+| TSO500 panel data    | [hmf_panel_resources.tso500.37_v2.3.0--2.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/hmf_reference_data/panels/hmf_panel_resources.tso500.37_v2.3.0--2.tar.gz) |
 
 _GRCh38 genome (Hartwig): `GRCh38_hmf`_
 
-| Type                 | Link                                                                                                                                                                                                  |
-|:---------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| FASTA                | [GRCh38_masked_exclusions_alts_hlas.fasta](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh38_hmf/25.1/GRCh38_masked_exclusions_alts_hlas.fasta)                                      |
-| FASTA index          | [GRCh38_masked_exclusions_alts_hlas.fasta.fai](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh38_hmf/25.1/samtools_index-1.16/GRCh38_masked_exclusions_alts_hlas.fasta.fai)          |
-| FASTA seq dictionary | [GRCh38_masked_exclusions_alts_hlas.fasta.dict](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh38_hmf/25.1/samtools_index-1.16/GRCh38_masked_exclusions_alts_hlas.fasta.dict)        |
+| Type                 | Link |
+|:---------------------|:-----|
+| FASTA                | [GRCh38_masked_exclusions_alts_hlas.fasta](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh38_hmf/25.1/GRCh38_masked_exclusions_alts_hlas.fasta) |
+| FASTA index          | [GRCh38_masked_exclusions_alts_hlas.fasta.fai](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh38_hmf/25.1/samtools_index-1.16/GRCh38_masked_exclusions_alts_hlas.fasta.fai) |
+| FASTA seq dictionary | [GRCh38_masked_exclusions_alts_hlas.fasta.dict](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh38_hmf/25.1/samtools_index-1.16/GRCh38_masked_exclusions_alts_hlas.fasta.dict) |
 | BWA-MEM index image  | [GRCh38_masked_exclusions_alts_hlas.fasta.img](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh38_hmf/25.1/bwa_index_image-gatk-4.6.1.0/GRCh38_masked_exclusions_alts_hlas.fasta.img) |
-| BWA-MEM2 index       | [bwa-mem2_index-2.2.1.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh38_hmf/25.1/bwa-mem2_index-2.2.1.tar.gz)                                                                |
-| GRIDSS index         | [gridss_index-2.13.2.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh38_hmf/25.1/gridss_index-2.13.2.tar.gz)                                                                  |
-| STAR index           | [star_index-gencode_38-2.7.3a.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh38_hmf/25.1/star_index-gencode_38-2.7.3a.tar.gz)                                                |
-| WiGiTS data          | [hmf_pipeline_resources.38_v2.3.0--2.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/hmf_reference_data/hmftools/hmf_pipeline_resources.38_v2.3.0--2.tar.gz)                              |
+| BWA-MEM2 index       | [bwa-mem2_index-2.2.1.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh38_hmf/25.1/bwa-mem2_index-2.2.1.tar.gz) |
+| GRIDSS index         | [gridss_index-2.13.2.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh38_hmf/25.1/gridss_index-2.13.2.tar.gz) |
+| STAR index           | [star_index-gencode_38-2.7.3a.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/genomes/GRCh38_hmf/25.1/star_index-gencode_38-2.7.3a.tar.gz) |
+| WiGiTS data          | [hmf_pipeline_resources.38_v2.3.0--2.tar.gz](https://pub-cf6ba01919994c3cbd354659947f74d8.r2.dev/hmf_reference_data/hmftools/hmf_pipeline_resources.38_v2.3.0--2.tar.gz) |
 
 ## Pipeline modes
 
@@ -940,7 +952,7 @@ These options are part of Nextflow and use a _single_ hyphen (pipeline parameter
 
 Use this parameter to choose a configuration profile. Profiles can give configuration presets for different compute environments.
 
-Several generic profiles are bundled with the pipeline which instruct the pipeline to use software packaged using different methods (Docker, Singularity, Podman, Shifter, Charliecloud, Apptainer, Conda) - see below.
+Several generic profiles are bundled with the pipeline which instruct the pipeline to use software packaged using different methods (Docker, Singularity, Podman, Shifter, Charliecloud, Apptainer, Conda, Spack) and can handle software deployment for you.
 
 :::info
 
@@ -948,12 +960,12 @@ We highly recommend the use of Docker or Singularity containers for full pipelin
 
 :::
 
-The pipeline also dynamically loads configurations from [https://github.com/nf-core/configs](https://github.com/nf-core/configs) when it runs, making multiple config profiles for various institutional clusters available at run time. For more information and to check if your system is supported, please see the [nf-core/configs documentation](https://github.com/nf-core/configs#documentation).
+The pipeline also dynamically loads configurations from [https://github.com/nf-core/configs](https://github.com/nf-core/configs) when it runs, making multiple config profiles for various institutions.
 
 Note that multiple profiles can be loaded, for example: `-profile test,docker` - the order of arguments is important!
 They are loaded in sequence, so later profiles can overwrite earlier profiles.
 
-If `-profile` is not specified, the pipeline will run locally and expect all software to be installed and available on the `PATH`. This is _not_ recommended, since it can lead to different results on different machines dependent on the computer environment.
+If `-profile` is not specified, the pipeline will run locally and expect all software to be installed and available on the `PATH`. This is _not_ recommended, since it can lead to different results and dependencies for different users.
 
 - `test`
   - A profile with a complete configuration for automated testing
@@ -977,7 +989,7 @@ If `-profile` is not specified, the pipeline will run locally and expect all sof
 
 ### `-resume`
 
-Specify this when restarting a pipeline. Nextflow will use cached results from any pipeline steps where the inputs are the same, continuing from where it got to previously. For input to be considered the same, not only the names must be identical but the files' contents as well. For more info about this parameter, see [this blog post](https://www.nextflow.io/blog/2019/demystifying-nextflow-resume.html).
+Specify this when restarting a pipeline. Nextflow will use cached results from any pipeline steps where the inputs are the same, continuing from where it got to previously. For input to be considered the same, not only must the same raw data be supplied, but all parameters and settings that affect execution must be the same too.
 
 You can also supply a run name to resume a specific run: `-resume [run-name]`. Use the `nextflow log` command to show previous run names.
 
@@ -999,121 +1011,4 @@ compute resource configuration.
 
 ### Container images
 
-#### Custom containers
-
-You may want to change which container or conda environment uses for a particular process (e.g. due to a newer tool
-version being available). Please see [updating tool versions](https://nf-co.re/docs/usage/configuration#updating-tool-versions) for
-instructions.
-
-#### Default containers
-
-By default, nf-core pipelines use containers and software from the [biocontainers](https://biocontainers.pro/) or [bioconda](https://bioconda.github.io/) projects.
-
-To use a different container from the default container or conda environment specified in a pipeline, please see the [updating tool versions](https://nf-co.re/docs/usage/configuration#updating-tool-versions) section of the nf-core website.
-
-Below are links to these default images should you want to download images manually (e.g. to [run `oncoanalyser` offline](https://nf-co.re/docs/usage/getting_started/offline)).
-
-**Docker (Bioconda)**
-
-- Host: [quay.io](https://quay.io/organization/biocontainers)
-- Repo URL example: https://quay.io/repository/biocontainers/hmftools-redux?tab=tags
-- Image URI example: `quay.io/biocontainers/hmftools-redux:1.1--hdfd78af_1`
-
-**Singularity (Bioconda)**
-
-- Host: [Galaxy Project](https://depot.galaxyproject.org/singularity/)
-- Image URI example: https://depot.galaxyproject.org/singularity/hmftools-redux:1.1--hdfd78af_1
-
-**Bioconda recipes** for the above containers are found here:
-
-- Host: [bioconda/bioconda-recipes](https://github.com/bioconda/bioconda-recipes/)
-- Recipe example: https://github.com/bioconda/bioconda-recipes/tree/master/recipes/hmftools-redux
-
-**Docker** images built by Hartwig's CI/CD infrastructure are also available, intended for beta releases and not used by default in `oncoanalyser`
-
-- Host: [Dockerhub](https://hub.docker.com/r/hartwigmedicalfoundation)
-- Repo URL example: https://hub.docker.com/r/hartwigmedicalfoundation/redux/tags
-- Image URI example: `docker.io/hartwigmedicalfoundation/redux:1.1`
-
-:::tip
-
-You can get the URIs for the default container images from the `oncoanalyser` repo with the below shell commands:
-
-- Docker: `grep -rohE "'biocontainers.*'" oncoanalyser/modules/local/ | sort | uniq`
-- Singularity: `grep -rohE "'https://depot.galaxyproject.*'" oncoanalyser/modules/local/ | sort | uniq`
-
-:::
-
-#### Container configuration
-
-All configuration options for containers can be found in the [Nextflow configuration documentation](https://www.nextflow.io/docs/latest/reference/config.html).
-A typical config might look like this:
-
-```groovy
-singularity {
-    enabled = true
-    cacheDir = '/path/to/cache_dir/'
-    autoMounts = true
-    runOptions = "-B </path/to/desired/mounted/volume/>"
-    pullTimeout = '2h'
-}
-```
-
-### Executors
-
-The [executor](https://www.nextflow.io/docs/latest/executor.html) is a Nextflow component that allows to submission of jobs for example via
-[SLURM](https://www.nextflow.io/docs/latest/executor.html#slurm) (typically on an HPC),
-[AWS Batch](https://www.nextflow.io/docs/latest/aws.html), or
-[Google Batch](https://www.nextflow.io/docs/latest/google.html).
-
-To enable SLURM for example, you would provide the below config:
-
-```groovy
-process {
-    executor = "slurm"
-}
-```
-
-Additional options for the enabled executor can be provided to the `executor` directive as shown below. See the
-[Config: Executor](https://www.nextflow.io/docs/latest/reference/config.html#executor) Nextflow documentation for all options.
-
-```groovy
-executor {
-    queueSize         = 100
-    queueStatInterval = '10 sec'
-    pollInterval      = '10 sec'
-    submitRateLimit   = '10 sec'
-}
-```
-
-### Custom tool arguments
-
-A pipeline might not always support every possible argument or option of a particular tool used in pipeline. Fortunately, nf-core pipelines provide some freedom to users to insert additional parameters that the pipeline does not include by default.
-
-To learn how to provide additional arguments to a particular tool of the pipeline, please see the [customising tool arguments](https://nf-co.re/docs/usage/configuration#customising-tool-arguments) section of the nf-core website.
-
-### nf-core/configs
-
-In most cases, you will only need to create a custom config as a one-off but if you and others within your organisation are likely to be running nf-core pipelines regularly and need to use the same settings regularly it may be a good idea to request that your custom config file is uploaded to the `nf-core/configs` git repository. Before you do this please can you test that the config file works with your pipeline of choice using the `-c` parameter. You can then create a pull request to the `nf-core/configs` repository with the addition of your config file, associated documentation file (see examples in [`nf-core/configs/docs`](https://github.com/nf-core/configs/tree/master/docs)), and amending [`nfcore_custom.config`](https://github.com/nf-core/configs/blob/master/nfcore_custom.config) to include your custom profile.
-
-See the main [Nextflow documentation](https://www.nextflow.io/docs/latest/config.html) for more information about creating your own configuration files.
-
-If you have any questions or issues please send us a message on [Slack](https://nf-co.re/join/slack) on the [`#configs` channel](https://nfcore.slack.com/channels/configs).
-
-## Running in the background
-
-Nextflow handles job submissions and supervises the running jobs. The Nextflow process must run until the pipeline is finished.
-
-The Nextflow `-bg` flag launches Nextflow in the background, detached from your terminal so that the workflow does not stop if you log out of your session. The logs are saved to a file.
-
-Alternatively, you can use `screen` / `tmux` or similar tool to create a detached session which you can log back into at a later time.
-Some HPC setups also allow you to run nextflow within a cluster job submitted your job scheduler (from where it submits more jobs).
-
-## Nextflow memory requirements
-
-In some cases, the Nextflow Java virtual machines can start to request a large amount of memory.
-We recommend adding the following line to your environment to limit this (typically in `~/.bashrc` or `~./bash_profile`):
-
-```bash
-NXF_OPTS='-Xms1g -Xmx4g'
-```
+Please see [Usage: Containers](./usage/containers.md)
