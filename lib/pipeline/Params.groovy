@@ -14,6 +14,7 @@ class Params {
 
         validateRunModes(params)
         validateSequencingType(params)
+        validateRealignBam(params)
 
         validateGenomeAndSetDefaults(params)
 
@@ -63,6 +64,22 @@ class Params {
                 "CLI argument --ref_data_types is required for mode prepare_reference.",
                 "Please specify one or more of the below valid values (separated by commas)",
                 Messages.createBulletedList(RefDataType),
+            )
+        }
+    }
+
+    private static void validateRealignBam(Map params) {
+
+        if (!params.realign_bam) {
+            return
+        }
+
+        def pipeline_mode = PipelineMode.fromString((String) params.mode)
+
+        if (pipeline_mode != PipelineMode.WGTS) {
+            Messages.error(
+                "The --realign_bam option is currently only supported in wgts mode,",
+                "but got mode(${params.mode}).",
             )
         }
     }
