@@ -40,8 +40,19 @@ workflow ISOFOX_QUANTIFICATION {
         .map { meta, tumor_bam, tumor_bai ->
             return [
                 meta,
-                sample.Inputs.preferUserProvidedInput(tumor_bam, meta, sample.FileKey.BAM_RNA_TUMOR),
-                sample.Inputs.preferUserProvidedInput(tumor_bai, meta, sample.FileKey.BAI_RNA_TUMOR),
+                sample.Inputs.preferRealignedOrUserInput(
+                    tumor_bam,
+                    meta,
+                    sample.FileKey.BAM_RNA_TUMOR,
+                    params.realign_bam,
+                ),
+                params.realign_bam
+                    ? tumor_bai
+                    : sample.Inputs.preferUserProvidedInput(
+                        tumor_bai,
+                        meta,
+                        sample.FileKey.BAI_RNA_TUMOR,
+                    ),
             ]
         }
         .branch { meta, tumor_bam, tumor_bai ->

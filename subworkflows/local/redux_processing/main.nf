@@ -41,13 +41,18 @@ workflow REDUX_PROCESSING {
     def selectBamInputs = { ch_dna, bam_type, bai_type, bam_redux_type ->
         return ch_dna.map { meta, bams, bais ->
 
-            bams = sample.Inputs.hasExisting(meta, bam_type)
-                ? [sample.Inputs.get(meta, bam_type)]
-                : bams
+            def selected_bam = sample.Inputs.preferRealignedOrUserInput(
+                bams ? bams[0] : [],
+                meta,
+                bam_type,
+                params.realign_bam,
+            )
+            bams = selected_bam ? [selected_bam] : []
 
-            bais = sample.Inputs.hasExisting(meta, bai_type)
-                ? [sample.Inputs.get(meta, bai_type)]
-                : bais
+            def selected_bai = params.realign_bam
+                ? (bais ? bais[0] : [])
+                : sample.Inputs.preferPipelineOutput(bais ? bais[0] : [], meta, bai_type)
+            bais = selected_bai ? [selected_bai] : []
 
             return [meta, bams, bais]
         }

@@ -38,10 +38,24 @@ workflow LILAC_CALLING {
         .map { meta, tumor_bam, tumor_bai, normal_bam, normal_bai ->
             return [
                 meta,
-                sample.Inputs.preferUserProvidedInput(tumor_bam, meta, sample.FileKey.BAM_REDUX_DNA_TUMOR),
-                sample.Inputs.preferPipelineOutput(tumor_bai, meta, sample.FileKey.BAI_DNA_TUMOR),
-                sample.Inputs.preferUserProvidedInput(normal_bam, meta, sample.FileKey.BAM_REDUX_DNA_NORMAL),
-                sample.Inputs.preferPipelineOutput(normal_bai, meta, sample.FileKey.BAI_DNA_NORMAL),
+                sample.Inputs.preferRealignedOrUserInput(
+                    tumor_bam,
+                    meta,
+                    sample.FileKey.BAM_REDUX_DNA_TUMOR,
+                    params.realign_bam,
+                ),
+                params.realign_bam
+                    ? tumor_bai
+                    : sample.Inputs.preferPipelineOutput(tumor_bai, meta, sample.FileKey.BAI_DNA_TUMOR),
+                sample.Inputs.preferRealignedOrUserInput(
+                    normal_bam,
+                    meta,
+                    sample.FileKey.BAM_REDUX_DNA_NORMAL,
+                    params.realign_bam,
+                ),
+                params.realign_bam
+                    ? normal_bai
+                    : sample.Inputs.preferPipelineOutput(normal_bai, meta, sample.FileKey.BAI_DNA_NORMAL),
             ]
         }
         .branch { meta, tumor_bam, tumor_bai, normal_bam, normal_bai ->
@@ -84,8 +98,19 @@ workflow LILAC_CALLING {
                 nbai_dna,
                 tbam_dna,
                 tbai_dna,
-                sample.Inputs.preferUserProvidedInput(tbam_rna, meta, sample.FileKey.BAM_RNA_TUMOR),
-                sample.Inputs.preferUserProvidedInput(tbai_rna, meta, sample.FileKey.BAI_RNA_TUMOR),
+                sample.Inputs.preferRealignedOrUserInput(
+                    tbam_rna,
+                    meta,
+                    sample.FileKey.BAM_RNA_TUMOR,
+                    params.realign_bam,
+                ),
+                params.realign_bam
+                    ? tbai_rna
+                    : sample.Inputs.preferUserProvidedInput(
+                        tbai_rna,
+                        meta,
+                        sample.FileKey.BAI_RNA_TUMOR,
+                    ),
                 sample.Inputs.preferUserProvidedInput(purple_dir, meta, sample.FileKey.PURPLE_DIR),
             ]
         }
