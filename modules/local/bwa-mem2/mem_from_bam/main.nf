@@ -13,9 +13,9 @@ process BWAMEM2_ALIGN_FROM_BAM {
     path genome_bwamem2_index
 
     output:
-    tuple val(meta), path('*.bam'), path('*.bai'), emit: bam
-    path 'versions.yml'                           , emit: versions
-    path '.command.*'                             , emit: command_files
+    tuple val(meta), path('*.bam'), path('*.bai')            , topic: bwamem2_align_bam
+    tuple val(meta), val('bwamem2_align'), path('.command.*'), topic: command_files
+    path 'versions.yml'                                      , topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -50,7 +50,7 @@ process BWAMEM2_ALIGN_FROM_BAM {
         -Y \\
         -K 100000000 \\
         -p \\
-        -R '${read_group_tag}' \\
+        -R '${meta.rg_line}' \\
         -t ${task.cpus} \\
         ${genome_fasta} \\
         /dev/stdin | \\
@@ -84,7 +84,7 @@ process BWAMEM2_ALIGN_FROM_BAM {
     """
 
     stub:
-    def output_fn = "${meta.sample_id}.${meta.read_group}.bam"
+    def output_fn = meta.split ? "${meta.split}.${meta.output_file_id}.bam" : "${meta.output_file_id}.bam"
     """
     touch ${output_fn}
     touch ${output_fn}.bai

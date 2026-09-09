@@ -8,19 +8,22 @@ process STAR_ALIGN_FROM_BAM {
         'quay.io/biocontainers/mulled-v2-69a6f67cb46e41b4c393f71634a9956d5e31f3e9:46745d95bbdc75d9503849416a66ac6555567ff0-0' }"
 
     input:
-    tuple val(meta), path(bam_input)   // BAM or CRAM to be realigned
+    tuple val(meta), val(rg_lines), path(bam_input)   // BAM or CRAM to be realigned
     path genome_star_index
 
     output:
-    tuple val(meta), path('Aligned.out.bam'), emit: bam
-    path 'versions.yml'          , emit: versions
-    path '.command.*'            , emit: command_files
+    tuple val(meta), path('*.bam')                        , topic: star_align_bam
+    tuple val(meta), path('*Log.final.out')               , topic: star_align_qc_log
+    tuple val(meta), val('star_align'), path('.command.*'), topic: command_files
+    path 'versions.yml'                                   , topic: versions
+
 
     when:
     task.ext.when == null || task.ext.when
 
     script:
     def args = task.ext.args ?: ''
+    def rg_lines_str = rg_lines.join(' , ')
 
     """
 
@@ -33,6 +36,7 @@ process STAR_ALIGN_FROM_BAM {
         --readFilesIn \\
           <(samtools fastq -@ ${task.cpus} -n -F 0x900 -1 /dev/stdout -2 /dev/null -0 /dev/null -s /dev/null collated.bam) \\
           <(samtools fastq -@ ${task.cpus} -n -F 0x900 -1 /dev/null -2 /dev/stdout -0 /dev/null -s /dev/null collated.bam) \\
+        --outSAMattrRGline ${rg_lines_str} \\ 
         --genomeDir ${genome_star_index} \\
         --runThreadN ${task.cpus} \\
         --alignSJstitchMismatchNmax 5 -1 5 5 \\
@@ -40,7 +44,7 @@ process STAR_ALIGN_FROM_BAM {
         --alignSplicedMateMapLminOverLmate 0.33 \\
         --chimJunctionOverhangMin 10 \\
         --chimOutType WithinBAM SoftClip \\
-        --chimScoreDropMax 30 \\
+        --chimScoreDropMax 70 \\
         --chimScoreJunctionNonGTAG 0 \\
         --chimScoreMin 1 \\
         --chimScoreSeparation 1 \\
@@ -54,7 +58,6 @@ process STAR_ALIGN_FROM_BAM {
         --outFilterMultimapNmax 10 \\
         --outFilterScoreMinOverLread 0.33 \\
         --outSAMattributes All \\
-        --outSAMattrRGline ID:${meta.read_group} SM:${meta.sample_id} \\
         --outSAMtype BAM Unsorted \\
         --outSAMunmapped Within \\
         --runRNGseed 0
