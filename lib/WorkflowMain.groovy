@@ -393,6 +393,13 @@ class WorkflowMain {
                 Nextflow.exit(1)
             }
         }
+	if (params.containsKey('realign_bam') && params.realign_bam && run_mode != Constants.RunMode.WGTS) {
+            log.error "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" +
+                "  The --realign_bam option is currently only supported in wgts mode but got\n" +
+                "  mode '${params.mode}'.\n" +
+                "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+            Nextflow.exit(1)
+        }
 
         if (params.ref_data_genome_alt != null) {
             if (params.genome_type != 'alt') {
@@ -486,14 +493,16 @@ class WorkflowMain {
             params.processes_manual,
             log,
         )
-
         return [
             mode: run_mode,
             stages: stages,
+            realign_bam: params.containsKey('realign_bam') && params.realign_bam,
             has_dna: inputs.any { Utils.hasTumorDna(it) },
             has_rna: inputs.any { Utils.hasTumorRna(it) },
             has_rna_fastq: inputs.any { Utils.hasTumorRnaFastq(it) },
             has_dna_fastq: inputs.any { Utils.hasTumorDnaFastq(it) || Utils.hasNormalDnaFastq(it) },
+            has_rna_aln: inputs.any { Utils.hasTumorRnaBam(it) },
+            has_dna_aln: inputs.any { Utils.hasTumorDnaBam(it) || Utils.hasNormalDnaBam(it) || Utils.hasDonorDnaBam(it) },
         ]
     }
 
@@ -506,8 +515,8 @@ class WorkflowMain {
             require_dict: true,
             require_img: true,
 
-            require_bwamem2_index: run_config.has_dna_fastq && run_config.stages.alignment,
-            require_star_index: run_config.has_rna_fastq && run_config.stages.alignment,
+            require_bwamem2_index: (run_config.has_dna_fastq || (run_config.realign_bam && run_config.has_dna_aln)) && run_config.stages.alignment,
+            require_star_index: (run_config.has_rna_fastq || (run_config.realign_bam && run_config.has_rna_aln)) && run_config.stages.alignment,
 
             require_gridss_index: run_config.has_dna && run_config.mode == Constants.RunMode.WGTS && run_config.stages.virusinterpreter,
             require_hmftools_data: true,

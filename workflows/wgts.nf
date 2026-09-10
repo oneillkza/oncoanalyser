@@ -99,42 +99,102 @@ workflow WGTS {
     // channel: [ meta, star_log, rna_md_metrics ]
     ch_align_rna_qc_tumor_out = channel.empty()
 
-    if (run_config.stages.alignment) {
+       if (run_config.stages.alignment) {
 
-        // NOTE(SW): fastp can be run twice, multiple passes of the FASTQ in some scenarios, typically not computationally
-        // expensive in such situations, so separation between umi / split processing maintained
+        if (params.realign_bam) {
 
-        // channel: [ meta, fastq_info, fastq_fwd, fastq_rev ]
-        ch_fastq_dna = getDnaFastqChannel(ch_inputs)
-        ch_fastq_rna = getRnaFastqChannel(ch_inputs)
+            // NOTE(KO): reads are sourced from existing alignments. FASTQ UMI processing does not apply
+            // here since there are no FASTQ inputs to extract UMIs from; UMIs already present in the
+            // alignment are handled downstream by REDUX via redux_umi_enabled.
 
-        // channel: [ meta, fastq_info, fastq_fwd, fastq_rev ]
-        ch_align_dna_input = channel.empty()
-        ch_align_rna_input = channel.empty()
-        if (params.fastp_umi_enabled || params.fastq_tools_umi_enabled) {
-
-            READ_UMI_PROCESSING(
+            READ_ALIGNMENT_DNA_FROM_BAM(
                 ch_inputs,
-                ch_fastq_dna,
-                ch_fastq_rna,
-                hmf_data.known_umis,
-                params.fastp_umi_enabled,
-                params.fastp_umi_location,
-                params.fastp_umi_length,
-                params.fastp_umi_skip,
-                params.fastq_tools_umi_enabled,
-                params.fastq_tools_umi_delim,
+                ref_data.genome_fasta,
+                ref_data.genome_bwamem2_index,
             )
 
-            ch_align_dna_input = ch_align_dna_input.mix(READ_UMI_PROCESSING.out.fastq_dna)
-            ch_align_rna_input = ch_align_rna_input.mix(READ_UMI_PROCESSING.out.fastq_rna)
+            READ_ALIGNMENT_RNA_FROM_BAM(
+                ch_inputs,
+                ref_data.genome_star_index,
+            )
+
+            ch_align_dna_tumor_out = ch_align_dna_tumor_out.mix(READ_ALIGNMENT_DNA_FROM_BAM.out.tumor)
+            ch_align_dna_normal_out = ch_align_dna_normal_out.mix(READ_ALIGNMENT_DNA_FROM_BAM.out.normal)
+            ch_align_dna_donor_out = ch_align_dna_donor_out.mix(READ_ALIGNMENT_DNA_FROM_BAM.out.donor)
+
+            ch_align_rna_tumor_out = ch_align_rna_tumor_out.mix(READ_ALIGNMENT_RNA_FROM_BAM.out.tumor)
+            ch_align_rna_qc_tumor_out = ch_align_rna_qc_tumor_out.mix(READ_ALIGNMENT_RNA_FROM_BAM.out.qc_files)
 
         } else {
 
-            ch_align_dna_input = ch_fastq_dna
-            ch_align_rna_input = ch_fastq_rna
+            // NOTE(SW): fastp can be run twice, multiple passes of the FASTQ in some scenarios, typically not computationally
+            // expensive in such situations, so separation between umi / split processing maintained
+
+            // channel: [ meta, fastq_info, fastq_fwd, fastq_rev ]
+            ch_fastq_dna = getDnaFastqChannel(ch_inputs)
+            ch_fastq_rna = getRnaFastqChannel(ch_inputs)
+
+            // channel: [ meta, fastq_info, fastq_fwd, fastq_rev ]
+            ch_align_dna_input = channel.empty()
+            ch_align_rna_input = channel.empty()
+            if (params.fastp_umi_enabled || params.fastq_tools_umi_enabled) {
+
+                READ_UMI_PROCESSING(
+                    ch_inputs,
+                    ch_fastq_dna,
+                    ch_fastq_rna,
+                    hmf_data.known_umis,
+                    params.fastp_umi_enabled,
+                    params.fastp_umi_location,
+                    params.fastp_umi_length,
+                    params.fastp_umi_skip,
+                    params.fastq_tools_umi_enabled,
+                    params.fastq_tools_umi_delim,
+                )
+
+                ch_align_dna_input = ch_align_dna_input.mix(READ_UMI_PROCESSING.out.fastq_dna)
+                ch_align_rna_input = ch_align_rna_input.mix(READ_UMI_PROCESSING.out.fastq_rna)
+
+            } else {
+
+                ch_align_dna_input = ch_fastq_dna
+                ch_align_rna_input = ch_fastq_rna
+
+            }
+
+            READ_ALIGNMENT_DNA(
+                ch_inputs,
+                ch_align_dna_input,
+                ref_data.genome_fasta,
+                ref_data.genome_bwamem2_index,
+                params.max_fastq_records,
+            )
+
+            READ_ALIGNMENT_RNA(
+                ch_inputs,
+                ch_align_rna_input,
+                ref_data.genome_star_index,
+            )
+
+            ch_align_dna_tumor_out = ch_align_dna_tumor_out.mix(READ_ALIGNMENT_DNA.out.tumor)
+            ch_align_dna_normal_out = ch_align_dna_normal_out.mix(READ_ALIGNMENT_DNA.out.normal)
+            ch_align_dna_donor_out = ch_align_dna_donor_out.mix(READ_ALIGNMENT_DNA.out.donor)
+
+            ch_align_rna_tumor_out = ch_align_rna_tumor_out.mix(READ_ALIGNMENT_RNA.out.tumor)
+            ch_align_rna_qc_tumor_out = ch_align_rna_qc_tumor_out.mix(READ_ALIGNMENT_RNA.out.qc_files)
 
         }
+
+    } else {
+
+        ch_align_dna_tumor_out = ch_inputs.map { meta -> [meta, [], []] }
+        ch_align_dna_normal_out = ch_inputs.map { meta -> [meta, [], []] }
+        ch_align_dna_donor_out = ch_inputs.map { meta -> [meta, [], []] }
+
+        ch_align_rna_tumor_out = ch_inputs.map { meta -> [meta, [], []] }
+        ch_align_rna_qc_tumor_out = ch_inputs.map { meta -> [meta, [], []] }
+
+    }
 
         READ_ALIGNMENT_DNA(
             ch_inputs,
@@ -194,6 +254,7 @@ workflow WGTS {
             false,  // targeted_mode
             params.redux_umi_enabled,
             params.redux_umi_duplex_delim,
+	    params.realign_bam,
         )
 
         ch_redux_tumor_out = ch_redux_tumor_out.mix(REDUX_PROCESSING.out.tumor_dir)
@@ -262,6 +323,7 @@ workflow WGTS {
             [],  // isofox_tpm_norm
             params.isofox_functions,
             isofox_read_length,
+	    params.realign_bam,
         )
 
         ch_isofox_out = ch_isofox_out.mix(ISOFOX_QUANTIFICATION.out.isofox_dir)
