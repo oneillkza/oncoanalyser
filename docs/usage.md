@@ -317,6 +317,27 @@ used throughout the WiGiTS tools). We plan to address this issue in future relea
 
 :::
 
+#### BAM / CRAM but realign
+
+To run from BAM or CRAM inputs but force re-alignment, specify `bam` or `cram` in the `filetype` field as usual and run the pipeline with:
+
+```bash
+--realign_bam
+```
+
+This causes `oncoanalyser` to stream reads directly from the input BAM/CRAM through `samtools fastq` into the DNA or RNA aligner, rather than treating the supplied BAM/CRAM as the downstream alignment input. Reads are then processed by REDUX and all subsequent stages exactly as they would be when starting from FASTQ.
+
+A `library_id` must be provided in the `info` field for each alignment to be realigned, since it is used to construct the read group:
+
+```csv title="samplesheet.realign.csv"
+group_id,subject_id,sample_id,sample_type,sequence_type,filetype,info,filepath
+PATIENT1,PATIENT1,PATIENT1-T,tumor,dna,bam,library_id:F115103,/path/to/PATIENT1-T.dna.bam
+```
+
+Note that read groups present in the source alignment are not preserved; all reads are assigned a single read group derived from the sample and library identifiers.
+
+Currently, `--realign_bam` is only supported in `--mode wgts`.
+
 #### REDUX alignments
 
 The most time and resource-intensive pipeline steps are read alignment by [BWA-MEM2](https://github.com/bwa-mem2/bwa-mem2)
