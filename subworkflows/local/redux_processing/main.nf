@@ -27,6 +27,7 @@ workflow REDUX_PROCESSING {
     targeted_mode          // boolean: [mandatory] Set targeted mode
     umi_enable             // boolean: [mandatory] enable UMI processing
     umi_duplex_delim       // string:  [optional] UMI duplex delimiter
+    realign_bam            // boolean: [mandatory] realigning from existing alignments
 
     main:
     // Select input sources then sort, separating by sample type
@@ -34,13 +35,20 @@ workflow REDUX_PROCESSING {
     // channel: skip: [ meta ]
     ch_inputs_tumor_sorted = ch_dna_tumor
         .map { meta, alns, idxs ->
+
+            // NOTE(KO): when realigning, the samplesheet alignment is the source of reads rather than an
+            // input to reuse, so the realigned alignments are taken. Samples supplied as REDUX inputs are
+            // not realigned and produce no alignments here, so those fall back to the samplesheet entry.
+            def use_realigned = realign_bam && alns
+
             return [
                 meta,
-                Utils.hasExistingInput(meta, Constants.INPUT.ALN_DNA_TUMOR) ? [Utils.getInput(meta, Constants.INPUT.ALN_DNA_TUMOR)] : alns,
-                Utils.hasExistingInput(meta, Constants.INPUT.IDX_DNA_TUMOR) ? [Utils.getInput(meta, Constants.INPUT.IDX_DNA_TUMOR)] : idxs,
+                use_realigned ? alns : (Utils.hasExistingInput(meta, Constants.INPUT.ALN_DNA_TUMOR) ? [Utils.getInput(meta, Constants.INPUT.ALN_DNA_TUMOR)] : alns),
+                use_realigned ? idxs : (Utils.hasExistingInput(meta, Constants.INPUT.IDX_DNA_TUMOR) ? [Utils.getInput(meta, Constants.INPUT.IDX_DNA_TUMOR)] : idxs),
             ]
         }
-        .branch { meta, alns, idxs ->
+
+	.branch { meta, alns, idxs ->
             def has_existing = Utils.hasExistingInput(meta, Constants.INPUT.REDUX_DIR_TUMOR)
             runnable: alns && ! has_existing
             skip: true
@@ -48,11 +56,12 @@ workflow REDUX_PROCESSING {
         }
 
     ch_inputs_normal_sorted = ch_dna_normal
+        def use_realigned = realign_bam && alns
         .map { meta, alns, idxs ->
             return [
                 meta,
-                Utils.hasExistingInput(meta, Constants.INPUT.ALN_DNA_NORMAL) ? [Utils.getInput(meta, Constants.INPUT.ALN_DNA_NORMAL)] : alns,
-                Utils.hasExistingInput(meta, Constants.INPUT.IDX_DNA_NORMAL) ? [Utils.getInput(meta, Constants.INPUT.IDX_DNA_NORMAL)] : idxs,
+                use_realigned ? alns : Utils.hasExistingInput(meta, Constants.INPUT.ALN_DNA_NORMAL) ? [Utils.getInput(meta, Constants.INPUT.ALN_DNA_NORMAL)] : alns,
+                use_realigned ? idxs : Utils.hasExistingInput(meta, Constants.INPUT.IDX_DNA_NORMAL) ? [Utils.getInput(meta, Constants.INPUT.IDX_DNA_NORMAL)] : idxs,
             ]
         }
         .branch { meta, alns, idxs ->
@@ -64,10 +73,11 @@ workflow REDUX_PROCESSING {
 
     ch_inputs_donor_sorted = ch_dna_donor
         .map { meta, alns, idxs ->
+	    def use_realigned = realign_bam && alns
             return [
                 meta,
-                Utils.hasExistingInput(meta, Constants.INPUT.ALN_DNA_DONOR) ? [Utils.getInput(meta, Constants.INPUT.ALN_DNA_DONOR)] : alns,
-                Utils.hasExistingInput(meta, Constants.INPUT.IDX_DNA_DONOR) ? [Utils.getInput(meta, Constants.INPUT.IDX_DNA_DONOR)] : idxs,
+                use_realigned ? alns : Utils.hasExistingInput(meta, Constants.INPUT.ALN_DNA_DONOR) ? [Utils.getInput(meta, Constants.INPUT.ALN_DNA_DONOR)] : alns,
+                use_realigned ? idxs : Utils.hasExistingInput(meta, Constants.INPUT.IDX_DNA_DONOR) ? [Utils.getInput(meta, Constants.INPUT.IDX_DNA_DONOR)] : idxs,
             ]
         }
         .branch { meta, alns, idxs ->
