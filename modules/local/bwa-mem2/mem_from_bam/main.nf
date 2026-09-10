@@ -8,7 +8,7 @@ process BWAMEM2_ALIGN_FROM_BAM {
         'biocontainers/mulled-v2-4dde50190ae599f2bb2027cb2c8763ea00fb5084:596c0d6a494faa218562f2be03af2714d454da4f-0' }"
 
     input:
-    tuple val(meta), path(bam_input)        // BAM or CRAM to be realigned
+    tuple val(meta), path(aln_input), path(idx_input)   // BAM or CRAM to be realigned, plus index
     path genome_fasta
     path genome_bwamem2_index
 
@@ -21,70 +21,76 @@ process BWAMEM2_ALIGN_FROM_BAM {
     task.ext.when == null || task.ext.when
 
     script:
-    def args  = task.ext.args  ?: ''
+    def args = task.ext.args ?: ''
     def args2 = task.ext.args2 ?: ''
     def args3 = task.ext.args3 ?: ''
 
-    def read_group_tag = "@RG\\tID:${meta.read_group}\\tSM:${meta.sample_id}"
-    def output_fn = "${meta.sample_id}.${meta.read_group}.bam"
+    def output_fn = "${meta.output_file_id}.bam"
+
+    // NOTE(KO): reads are streamed from the input alignment rather than read from FASTQ. samtools collate
+    // restores read-name grouping (required for the interleaved `-p` mode of bwa-mem2), samtools fastq then
+    // emits an interleaved stream on stdout. Secondary and supplementary records are dropped with -F 0x900
+    // so that only primary reads are realigned.
 
     """
     ln -fs \$(find -L ${genome_bwamem2_index} -type f) ./
 
     samtools collate \\
         -O \\
+        -u \\
         -@ ${task.cpus} \\
-        ${bam_input} | \\
-    samtools fastq \\
-        -@ ${task.cpus} \\
-        -n \\
-        -F 0x900 \\
-        -1 /dev/stdout \\
-        -2 /dev/stdout \\
-        -0 /dev/null \\
-        -s /dev/null \\
-        - | \\
-    \\
-    bwa-mem2 mem \\
-        ${args} \\
-        -Y \\
-        -K 100000000 \\
-        -p \\
-        -R '${meta.rg_line}' \\
-        -t ${task.cpus} \\
-        ${genome_fasta} \\
-        /dev/stdin | \\
-    \\
-    sambamba view \\
-        ${args2} \\
-        --sam-input \\
-        --format bam \\
-        --compression-level 0 \\
-        --nthreads ${task.cpus} \\
-        /dev/stdin | \\
-    \\
-    sambamba sort \\
-        ${args3} \\
-        --nthreads ${task.cpus} \\
-        --out ${output_fn} \\
-        /dev/stdin
+        ${aln_input} | \\
+        \\
+        samtools fastq \\
+            -@ ${task.cpus} \\
+            -n \\
+            -F 0x900 \\
+            -1 /dev/stdout \\
+            -2 /dev/stdout \\
+            -0 /dev/null \\
+            -s /dev/null \\
+            - | \\
+        \\
+        bwa-mem2 mem \\
+            ${args} \\
+            -Y \\
+            -K 100000000 \\
+            -p \\
+            -R '${meta.rg_line}' \\
+            -t ${task.cpus} \\
+            ${genome_fasta} \\
+            /dev/stdin | \\
+        \\
+        sambamba view \\
+            ${args2} \\
+            --sam-input \\
+            --format bam \\
+            --compression-level 0 \\
+            --nthreads ${task.cpus} \\
+            /dev/stdin | \\
+        \\
+        sambamba sort \\
+            ${args3} \\
+            --nthreads ${task.cpus} \\
+            --out ${output_fn} \\
+            /dev/stdin
 
-    # Force non-empty output check (helps catch upstream empty input quickly)
+    # Guard against a silently truncated or empty stream from the pipeline above
     test -s ${output_fn}
     samtools quickcheck ${output_fn}
-    samtools index -@ ${task.cpus} ${output_fn}
 
-    # NOTE(SW): bwa-mem2 version hardcoded as 2.3 reports the wrong version
+    # NOTE(SW): bwa-mem2 version hardcoded as 2.3 reports the wrong version, see https://github.com/bwa-mem2/bwa-mem2/issues/276
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         bwa-mem2: 2.3
-        samtools: \$(echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//')
+        samtools: \$(samtools --version | sed -n '/^samtools / { s/^.* //p }')
         sambamba: \$(sambamba --version 2>&1 | sed -n '/^sambamba / { s/^.* //p }' | head -n1)
     END_VERSIONS
     """
 
     stub:
-    def output_fn = meta.split ? "${meta.split}.${meta.output_file_id}.bam" : "${meta.output_file_id}.bam"
+    def output_fn = "${meta.output_file_id}.bam"
+
     """
     touch ${output_fn}
     touch ${output_fn}.bai
