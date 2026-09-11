@@ -10,7 +10,6 @@ workflow CIDER_CALLING {
     ch_inputs          // channel: [mandatory] [ meta ]
     ch_redux_dir_tumor // channel: [mandatory] [ meta, redux_dir ]
     ch_tumor_rna_aln   // channel: [mandatory] [ meta, aln, idx ]
-    realign_bam        // boolean: [mandatory] realigning from existing alignments
 
     // Reference data
     genome_fasta       // channel: [mandatory] /path/to/genome_fasta
@@ -18,6 +17,9 @@ workflow CIDER_CALLING {
     genome_fai         // channel: [mandatory] /path/to/genome_fai
     genome_dict        // channel: [mandatory] /path/to/genome_dict
     genome_img         // channel: [optional]  /path/to/genome_img
+
+    //Params
+    realign_bam        // boolean: [mandatory] realigning from existing alignments
 
     main:
     // Select input sources then sort, separate by DNA and RNA

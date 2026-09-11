@@ -56,8 +56,8 @@ workflow REDUX_PROCESSING {
         }
 
     ch_inputs_normal_sorted = ch_dna_normal
-        def use_realigned = realign_bam && alns
         .map { meta, alns, idxs ->
+            def use_realigned = realign_bam && alns
             return [
                 meta,
                 use_realigned ? alns : Utils.hasExistingInput(meta, Constants.INPUT.ALN_DNA_NORMAL) ? [Utils.getInput(meta, Constants.INPUT.ALN_DNA_NORMAL)] : alns,

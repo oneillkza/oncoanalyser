@@ -501,37 +501,37 @@ class Utils {
                         "the configured panel."
                     Nextflow.exit(1)
                 }
+	     }
 
-                            // Require library_id for alignments that are to be realigned
-                if (params.containsKey('realign_bam') && params.realign_bam) {
-    
-                    def realign_sample_keys = [
-                        [Constants.SampleType.TUMOR, Constants.SequenceType.DNA],
-                        [Constants.SampleType.TUMOR, Constants.SequenceType.RNA],
-                        [Constants.SampleType.NORMAL, Constants.SequenceType.DNA],
-                        [Constants.SampleType.DONOR, Constants.SequenceType.DNA],
-                    ]
-    
-                    realign_sample_keys.each { key ->
-    
-                        if (! meta.containsKey(key)) {
-                            return
-                        }
-    
-                        // Only plain alignments are realigned; REDUX inputs and FASTQs are unaffected
-                        if (! meta[key].containsKey(Constants.FileType.ALN)) {
-                            return
-                        }
-    
-                        if (! meta[key].library_id) {
-                            def (sample_type, sequence_type) = key
-                            log.error "missing 'library_id' info field for ${meta.group_id} ${sample_type}/${sequence_type}\n\n" +
-                                "NB: library_id is required for alignment inputs when running with --realign_bam."
-                            Nextflow.exit(1)
-                        }
-                    }
-                }
-            }
+             // Require library_id for alignments that are to be realigned
+             if (params.containsKey('realign_bam') && params.realign_bam) {
+ 
+                 def realign_sample_keys = [
+                     [Constants.SampleType.TUMOR, Constants.SequenceType.DNA],
+                     [Constants.SampleType.TUMOR, Constants.SequenceType.RNA],
+                     [Constants.SampleType.NORMAL, Constants.SequenceType.DNA],
+                     [Constants.SampleType.DONOR, Constants.SequenceType.DNA],
+                 ]
+ 
+                 realign_sample_keys.each { key ->
+ 
+                     if (! meta.containsKey(key)) {
+                         return
+                     }
+ 
+                     // Only plain alignments are realigned; REDUX inputs and FASTQs are unaffected
+                     if (! meta[key].containsKey(Constants.FileType.ALN)) {
+                         return
+                     }
+ 
+                     if (! meta[key].library_id) {
+                         def (sample_type, sequence_type) = key
+                         log.error "missing 'library_id' info field for ${meta.group_id} ${sample_type}/${sequence_type}\n\n" +
+                             "NB: library_id is required for alignment inputs when running with --realign_bam."
+                         Nextflow.exit(1)
+                     }
+                 }
+             }
 
             // Do not allow normal DNA only
             if (Utils.hasNormalDna(meta) && ! Utils.hasTumorDna(meta)) {
