@@ -222,7 +222,7 @@ Output file paths are constructed based on `group_id` and `sample_id`:
 | Key                        | Description                                        | Applicable context                                   |
 | :------------------------- | :------------------------------------------------- | :--------------------------------------------------- |
 | `lane`                     | Sequencing lane                                    | FASTQ inputs                                         |
-| `library_id`               | Sequencing library identifier                      | FASTQ inputs                                         |
+| `library_id`               | Sequencing library identifier                      | FASTQ inputs; BAM/CRAM inputs when using --realign_bam |
 | `flowcell`                 | Flowcell identifier                                | FASTQ inputs                                         |
 | `longitudinal_sample`      | Longitudinal sample identifier                     | Mode `purity_estimate`                               |
 | `cancer_type`              | Name of cancer type                                | NEO scorer (TPM analysis) and ORANGE (report header) |

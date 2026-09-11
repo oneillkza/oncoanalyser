@@ -737,8 +737,8 @@ workflow WGTS {
             ref_data.genome_fai,
             hmf_data.lilac_resources,
             params.sequencing_platform,
-            params.realign_bam,
             false,  // targeted_mode,
+            params.realign_bam,
         )
 
         ch_lilac_out = ch_lilac_out.mix(LILAC_CALLING.out.lilac_dir)
@@ -847,7 +847,7 @@ workflow WGTS {
             hmf_data.neo_resources,
             hmf_data.cohort_tpm_medians,
             isofox_read_length,
-            realign_bam,
+            params.realign_bam,
         )
 
     }
