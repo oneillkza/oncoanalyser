@@ -194,6 +194,12 @@ class Utils {
 
                         meta_sample[filetype_enum] = Utils.getFileObject(it.filepath)
 
+                        // Retain the library identifier for alignment inputs; required to construct a read
+                        // group when realigning, and otherwise discarded for non-FASTQ filetypes
+                        if (info_data.containsKey(Constants.InfoField.LIBRARY_ID)) {
+                            meta_sample.library_id = info_data[Constants.InfoField.LIBRARY_ID]
+                        }
+
                     }
 
                     // Record sample key to simplify iteration later on
@@ -495,8 +501,37 @@ class Utils {
                         "the configured panel."
                     Nextflow.exit(1)
                 }
+	     }
 
-            }
+             // Require library_id for alignments that are to be realigned
+             if (params.containsKey('realign_bam') && params.realign_bam) {
+ 
+                 def realign_sample_keys = [
+                     [Constants.SampleType.TUMOR, Constants.SequenceType.DNA],
+                     [Constants.SampleType.TUMOR, Constants.SequenceType.RNA],
+                     [Constants.SampleType.NORMAL, Constants.SequenceType.DNA],
+                     [Constants.SampleType.DONOR, Constants.SequenceType.DNA],
+                 ]
+ 
+                 realign_sample_keys.each { key ->
+ 
+                     if (! meta.containsKey(key)) {
+                         return
+                     }
+ 
+                     // Only plain alignments are realigned; REDUX inputs and FASTQs are unaffected
+                     if (! meta[key].containsKey(Constants.FileType.ALN)) {
+                         return
+                     }
+ 
+                     if (! meta[key].library_id) {
+                         def (sample_type, sequence_type) = key
+                         log.error "missing 'library_id' info field for ${meta.group_id} ${sample_type}/${sequence_type}\n\n" +
+                             "NB: library_id is required for alignment inputs when running with --realign_bam."
+                         Nextflow.exit(1)
+                     }
+                 }
+             }
 
             // Do not allow normal DNA only
             if (Utils.hasNormalDna(meta) && ! Utils.hasTumorDna(meta)) {
@@ -947,6 +982,16 @@ class Utils {
         } else {
             return val
         }
+    }
+    
+    public static selectRealignedOrExisting(val, meta, key, realign_bam) {
+    // When realigning, an alignment given in the samplesheet is the source of reads rather than a
+    // downstream input to be reused, so the pipeline-produced (realigned, then REDUX-processed) path
+    // is always taken. Otherwise fall back to preferring a user-provided input.
+    if (realign_bam) {
+        return val
+    }
+    return selectCurrentOrExisting(val, meta, key)
     }
 
 }

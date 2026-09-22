@@ -27,6 +27,7 @@ workflow NEO_PREDICTION {
 
     // Params
     isofox_read_length         //  string: [mandatory] Isofox read length
+    realign_bam                // boolean: [mandatory] realigning from existing alignments
 
     main:
     //
@@ -109,8 +110,8 @@ workflow NEO_PREDICTION {
             return [
                 meta,
                 neo_finder_dir,
-                Utils.selectCurrentOrExisting(tumor_rna_aln, meta, Constants.INPUT.ALN_RNA_TUMOR),
-                Utils.selectCurrentOrExisting(tumor_rna_idx, meta, Constants.INPUT.IDX_RNA_TUMOR),
+		Utils.selectRealignedOrExisting(tumor_rna_aln, meta, Constants.INPUT.ALN_RNA_TUMOR, realign_bam),
+                Utils.selectRealignedOrExisting(tumor_rna_idx, meta, Constants.INPUT.IDX_RNA_TUMOR, realign_bam),
             ]
         }
         .branch { meta, neo_finder_dir, tumor_rna_aln, tumor_rna_idx ->

@@ -4,41 +4,43 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { AMBER_PROFILING       } from '../subworkflows/local/amber_profiling'
-include { BAMTOOLS_METRICS      } from '../subworkflows/local/bamtools_metrics'
-include { CHORD_PREDICTION      } from '../subworkflows/local/chord_prediction'
-include { CIDER_CALLING         } from '../subworkflows/local/cider_calling'
-include { COBALT_PROFILING      } from '../subworkflows/local/cobalt_profiling'
-include { CUPPA_PREDICTION      } from '../subworkflows/local/cuppa_prediction'
-include { ESVEE_CALLING         } from '../subworkflows/local/esvee_calling'
-include { ISOFOX_QUANTIFICATION } from '../subworkflows/local/isofox_quantification'
-include { LILAC_CALLING         } from '../subworkflows/local/lilac_calling'
-include { LINX_ANNOTATION       } from '../subworkflows/local/linx_annotation'
-include { LINX_PLOTTING         } from '../subworkflows/local/linx_plotting'
-include { MULTIQC_REPORTING     } from '../subworkflows/local/multiqc_reporting'
-include { NEO_PREDICTION        } from '../subworkflows/local/neo_prediction'
-include { ORANGE_REPORTING      } from '../subworkflows/local/orange_reporting'
-include { PAVE_ANNOTATION       } from '../subworkflows/local/pave_annotation'
-include { PEACH_CALLING         } from '../subworkflows/local/peach_calling'
-include { PREPARE_OUTPUTS_WGTS  } from '../subworkflows/local/prepare_outputs'
-include { PREPARE_REFERENCE     } from '../subworkflows/local/prepare_reference'
-include { PURPLE_CALLING        } from '../subworkflows/local/purple_calling'
-include { QSEE_METRICS          } from '../subworkflows/local/qsee_metrics'
-include { READ_ALIGNMENT_DNA    } from '../subworkflows/local/read_alignment_dna'
-include { READ_ALIGNMENT_RNA    } from '../subworkflows/local/read_alignment_rna'
-include { READ_UMI_PROCESSING   } from '../subworkflows/local/read_umi_processing'
-include { REDUX_PROCESSING      } from '../subworkflows/local/redux_processing'
-include { SAGE_APPEND           } from '../subworkflows/local/sage_append'
-include { SAGE_CALLING          } from '../subworkflows/local/sage_calling'
-include { SAGE_PLOTTING         } from '../subworkflows/local/sage_plotting'
-include { SIGS_FITTING          } from '../subworkflows/local/sigs_fitting'
-include { TEAL_CHARACTERISATION } from '../subworkflows/local/teal_characterisation'
-include { VIRUSBREAKEND_CALLING } from '../subworkflows/local/virusbreakend_calling'
+include { AMBER_PROFILING             } from '../subworkflows/local/amber_profiling'
+include { BAMTOOLS_METRICS            } from '../subworkflows/local/bamtools_metrics'
+include { CHORD_PREDICTION            } from '../subworkflows/local/chord_prediction'
+include { CIDER_CALLING               } from '../subworkflows/local/cider_calling'
+include { COBALT_PROFILING            } from '../subworkflows/local/cobalt_profiling'
+include { CUPPA_PREDICTION            } from '../subworkflows/local/cuppa_prediction'
+include { ESVEE_CALLING               } from '../subworkflows/local/esvee_calling'
+include { ISOFOX_QUANTIFICATION       } from '../subworkflows/local/isofox_quantification'
+include { LILAC_CALLING               } from '../subworkflows/local/lilac_calling'
+include { LINX_ANNOTATION             } from '../subworkflows/local/linx_annotation'
+include { LINX_PLOTTING               } from '../subworkflows/local/linx_plotting'
+include { MULTIQC_REPORTING           } from '../subworkflows/local/multiqc_reporting'
+include { NEO_PREDICTION              } from '../subworkflows/local/neo_prediction'
+include { ORANGE_REPORTING            } from '../subworkflows/local/orange_reporting'
+include { PAVE_ANNOTATION             } from '../subworkflows/local/pave_annotation'
+include { PEACH_CALLING               } from '../subworkflows/local/peach_calling'
+include { PREPARE_OUTPUTS_WGTS        } from '../subworkflows/local/prepare_outputs'
+include { PREPARE_REFERENCE           } from '../subworkflows/local/prepare_reference'
+include { PURPLE_CALLING              } from '../subworkflows/local/purple_calling'
+include { QSEE_METRICS                } from '../subworkflows/local/qsee_metrics'
+include { READ_ALIGNMENT_DNA          } from '../subworkflows/local/read_alignment_dna'
+include { READ_ALIGNMENT_DNA_FROM_BAM } from '../subworkflows/local/read_alignment_dna_from_bam'
+include { READ_ALIGNMENT_RNA          } from '../subworkflows/local/read_alignment_rna'
+include { READ_ALIGNMENT_RNA_FROM_BAM } from '../subworkflows/local/read_alignment_rna_from_bam'
+include { READ_UMI_PROCESSING         } from '../subworkflows/local/read_umi_processing'
+include { REDUX_PROCESSING            } from '../subworkflows/local/redux_processing'
+include { SAGE_APPEND                 } from '../subworkflows/local/sage_append'
+include { SAGE_CALLING                } from '../subworkflows/local/sage_calling'
+include { SAGE_PLOTTING               } from '../subworkflows/local/sage_plotting'
+include { SIGS_FITTING                } from '../subworkflows/local/sigs_fitting'
+include { TEAL_CHARACTERISATION       } from '../subworkflows/local/teal_characterisation'
+include { VIRUSBREAKEND_CALLING       } from '../subworkflows/local/virusbreakend_calling'
 
-include { softwareVersionsToYAML } from '../subworkflows/nf-core/utils_nfcore_pipeline'
+include { softwareVersionsToYAML      } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 
-include { getDnaFastqChannel } from '../subworkflows/local/utils_nfcore_oncoanalyser_pipeline'
-include { getRnaFastqChannel } from '../subworkflows/local/utils_nfcore_oncoanalyser_pipeline'
+include { getDnaFastqChannel          } from '../subworkflows/local/utils_nfcore_oncoanalyser_pipeline'
+include { getRnaFastqChannel          } from '../subworkflows/local/utils_nfcore_oncoanalyser_pipeline'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -99,63 +101,91 @@ workflow WGTS {
     // channel: [ meta, star_log, rna_md_metrics ]
     ch_align_rna_qc_tumor_out = channel.empty()
 
-    if (run_config.stages.alignment) {
+       if (run_config.stages.alignment) {
 
-        // NOTE(SW): fastp can be run twice, multiple passes of the FASTQ in some scenarios, typically not computationally
-        // expensive in such situations, so separation between umi / split processing maintained
+        if (params.realign_bam) {
 
-        // channel: [ meta, fastq_info, fastq_fwd, fastq_rev ]
-        ch_fastq_dna = getDnaFastqChannel(ch_inputs)
-        ch_fastq_rna = getRnaFastqChannel(ch_inputs)
+            // NOTE(KO): reads are sourced from existing alignments. FASTQ UMI processing does not apply
+            // here since there are no FASTQ inputs to extract UMIs from; UMIs already present in the
+            // alignment are handled downstream by REDUX via redux_umi_enabled.
 
-        // channel: [ meta, fastq_info, fastq_fwd, fastq_rev ]
-        ch_align_dna_input = channel.empty()
-        ch_align_rna_input = channel.empty()
-        if (params.fastp_umi_enabled || params.fastq_tools_umi_enabled) {
-
-            READ_UMI_PROCESSING(
+            READ_ALIGNMENT_DNA_FROM_BAM(
                 ch_inputs,
-                ch_fastq_dna,
-                ch_fastq_rna,
-                hmf_data.known_umis,
-                params.fastp_umi_enabled,
-                params.fastp_umi_location,
-                params.fastp_umi_length,
-                params.fastp_umi_skip,
-                params.fastq_tools_umi_enabled,
-                params.fastq_tools_umi_delim,
+                ref_data.genome_fasta,
+                ref_data.genome_bwamem2_index,
             )
 
-            ch_align_dna_input = ch_align_dna_input.mix(READ_UMI_PROCESSING.out.fastq_dna)
-            ch_align_rna_input = ch_align_rna_input.mix(READ_UMI_PROCESSING.out.fastq_rna)
+            READ_ALIGNMENT_RNA_FROM_BAM(
+                ch_inputs,
+                ref_data.genome_star_index,
+            )
+
+            ch_align_dna_tumor_out = ch_align_dna_tumor_out.mix(READ_ALIGNMENT_DNA_FROM_BAM.out.tumor)
+            ch_align_dna_normal_out = ch_align_dna_normal_out.mix(READ_ALIGNMENT_DNA_FROM_BAM.out.normal)
+            ch_align_dna_donor_out = ch_align_dna_donor_out.mix(READ_ALIGNMENT_DNA_FROM_BAM.out.donor)
+
+            ch_align_rna_tumor_out = ch_align_rna_tumor_out.mix(READ_ALIGNMENT_RNA_FROM_BAM.out.tumor)
+            ch_align_rna_qc_tumor_out = ch_align_rna_qc_tumor_out.mix(READ_ALIGNMENT_RNA_FROM_BAM.out.qc_files)
 
         } else {
 
-            ch_align_dna_input = ch_fastq_dna
-            ch_align_rna_input = ch_fastq_rna
+            // NOTE(SW): fastp can be run twice, multiple passes of the FASTQ in some scenarios, typically not computationally
+            // expensive in such situations, so separation between umi / split processing maintained
+
+            // channel: [ meta, fastq_info, fastq_fwd, fastq_rev ]
+            ch_fastq_dna = getDnaFastqChannel(ch_inputs)
+            ch_fastq_rna = getRnaFastqChannel(ch_inputs)
+
+            // channel: [ meta, fastq_info, fastq_fwd, fastq_rev ]
+            ch_align_dna_input = channel.empty()
+            ch_align_rna_input = channel.empty()
+            if (params.fastp_umi_enabled || params.fastq_tools_umi_enabled) {
+
+                READ_UMI_PROCESSING(
+                    ch_inputs,
+                    ch_fastq_dna,
+                    ch_fastq_rna,
+                    hmf_data.known_umis,
+                    params.fastp_umi_enabled,
+                    params.fastp_umi_location,
+                    params.fastp_umi_length,
+                    params.fastp_umi_skip,
+                    params.fastq_tools_umi_enabled,
+                    params.fastq_tools_umi_delim,
+                )
+
+                ch_align_dna_input = ch_align_dna_input.mix(READ_UMI_PROCESSING.out.fastq_dna)
+                ch_align_rna_input = ch_align_rna_input.mix(READ_UMI_PROCESSING.out.fastq_rna)
+
+            } else {
+
+                ch_align_dna_input = ch_fastq_dna
+                ch_align_rna_input = ch_fastq_rna
+
+            }
+
+            READ_ALIGNMENT_DNA(
+                ch_inputs,
+                ch_align_dna_input,
+                ref_data.genome_fasta,
+                ref_data.genome_bwamem2_index,
+                params.max_fastq_records,
+            )
+
+            READ_ALIGNMENT_RNA(
+                ch_inputs,
+                ch_align_rna_input,
+                ref_data.genome_star_index,
+            )
+
+            ch_align_dna_tumor_out = ch_align_dna_tumor_out.mix(READ_ALIGNMENT_DNA.out.tumor)
+            ch_align_dna_normal_out = ch_align_dna_normal_out.mix(READ_ALIGNMENT_DNA.out.normal)
+            ch_align_dna_donor_out = ch_align_dna_donor_out.mix(READ_ALIGNMENT_DNA.out.donor)
+
+            ch_align_rna_tumor_out = ch_align_rna_tumor_out.mix(READ_ALIGNMENT_RNA.out.tumor)
+            ch_align_rna_qc_tumor_out = ch_align_rna_qc_tumor_out.mix(READ_ALIGNMENT_RNA.out.qc_files)
 
         }
-
-        READ_ALIGNMENT_DNA(
-            ch_inputs,
-            ch_align_dna_input,
-            ref_data.genome_fasta,
-            ref_data.genome_bwamem2_index,
-            params.max_fastq_records,
-        )
-
-        READ_ALIGNMENT_RNA(
-            ch_inputs,
-            ch_align_rna_input,
-            ref_data.genome_star_index,
-        )
-
-        ch_align_dna_tumor_out = ch_align_dna_tumor_out.mix(READ_ALIGNMENT_DNA.out.tumor)
-        ch_align_dna_normal_out = ch_align_dna_normal_out.mix(READ_ALIGNMENT_DNA.out.normal)
-        ch_align_dna_donor_out = ch_align_dna_donor_out.mix(READ_ALIGNMENT_DNA.out.donor)
-
-        ch_align_rna_tumor_out = ch_align_rna_tumor_out.mix(READ_ALIGNMENT_RNA.out.tumor)
-        ch_align_rna_qc_tumor_out = ch_align_rna_qc_tumor_out.mix(READ_ALIGNMENT_RNA.out.qc_files)
 
     } else {
 
@@ -168,7 +198,7 @@ workflow WGTS {
 
     }
 
-    //
+     //
     // SUBWORKFLOW: Run REDUX for DNA alignments
     //
     // channel: [ meta, redux_dir ]
@@ -194,6 +224,7 @@ workflow WGTS {
             false,  // targeted_mode
             params.redux_umi_enabled,
             params.redux_umi_duplex_delim,
+	    params.realign_bam,
         )
 
         ch_redux_tumor_out = ch_redux_tumor_out.mix(REDUX_PROCESSING.out.tumor_dir)
@@ -262,6 +293,7 @@ workflow WGTS {
             [],  // isofox_tpm_norm
             params.isofox_functions,
             isofox_read_length,
+	    params.realign_bam,
         )
 
         ch_isofox_out = ch_isofox_out.mix(ISOFOX_QUANTIFICATION.out.isofox_dir)
@@ -638,6 +670,7 @@ workflow WGTS {
             ref_data.genome_fai,
             ref_data.genome_dict,
             ref_data.genome_img,
+            params.realign_bam,
         )
 
     }
@@ -705,6 +738,7 @@ workflow WGTS {
             hmf_data.lilac_resources,
             params.sequencing_platform,
             false,  // targeted_mode,
+            params.realign_bam,
         )
 
         ch_lilac_out = ch_lilac_out.mix(LILAC_CALLING.out.lilac_dir)
@@ -813,6 +847,7 @@ workflow WGTS {
             hmf_data.neo_resources,
             hmf_data.cohort_tpm_medians,
             isofox_read_length,
+            params.realign_bam,
         )
 
     }

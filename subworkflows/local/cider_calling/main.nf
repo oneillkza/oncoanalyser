@@ -18,6 +18,9 @@ workflow CIDER_CALLING {
     genome_dict        // channel: [mandatory] /path/to/genome_dict
     genome_img         // channel: [optional]  /path/to/genome_img
 
+    //Params
+    realign_bam        // boolean: [mandatory] realigning from existing alignments
+
     main:
     // Select input sources then sort, separate by DNA and RNA
     // channel: runnable: [ meta, aln, idx ]
@@ -43,8 +46,8 @@ workflow CIDER_CALLING {
         .map { meta, aln, idx ->
             return [
                 meta,
-                Utils.selectCurrentOrExisting(aln, meta, Constants.INPUT.ALN_RNA_TUMOR),
-                idx ?: Utils.getInput(meta, Constants.INPUT.IDX_RNA_TUMOR),
+		Utils.selectRealignedOrExisting(aln, meta, Constants.INPUT.ALN_RNA_TUMOR, realign_bam),
+                realign_bam ? idx : (idx ?: Utils.getInput(meta, Constants.INPUT.IDX_RNA_TUMOR)),
             ]
         }
         .branch { meta, aln, idx ->

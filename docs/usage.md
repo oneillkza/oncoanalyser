@@ -222,7 +222,7 @@ Output file paths are constructed based on `group_id` and `sample_id`:
 | Key                        | Description                                        | Applicable context                                   |
 | :------------------------- | :------------------------------------------------- | :--------------------------------------------------- |
 | `lane`                     | Sequencing lane                                    | FASTQ inputs                                         |
-| `library_id`               | Sequencing library identifier                      | FASTQ inputs                                         |
+| `library_id`               | Sequencing library identifier                      | FASTQ inputs; BAM/CRAM inputs when using --realign_bam |
 | `flowcell`                 | Flowcell identifier                                | FASTQ inputs                                         |
 | `longitudinal_sample`      | Longitudinal sample identifier                     | Mode `purity_estimate`                               |
 | `cancer_type`              | Name of cancer type                                | NEO scorer (TPM analysis) and ORANGE (report header) |
@@ -316,6 +316,27 @@ This performance issue is due to how CRAM reading is implemented in
 used throughout the WiGiTS tools). We plan to address this issue in future releases of `oncoanalyser`.
 
 :::
+
+#### BAM / CRAM but realign
+
+To run from BAM or CRAM inputs but force re-alignment, specify `bam` or `cram` in the `filetype` field as usual and run the pipeline with:
+
+```bash
+--realign_bam
+```
+
+This causes `oncoanalyser` to stream reads directly from the input BAM/CRAM through `samtools fastq` into the DNA or RNA aligner, rather than treating the supplied BAM/CRAM as the downstream alignment input. Reads are then processed by REDUX and all subsequent stages exactly as they would be when starting from FASTQ.
+
+A `library_id` must be provided in the `info` field for each alignment to be realigned, since it is used to construct the read group:
+
+```csv title="samplesheet.realign.csv"
+group_id,subject_id,sample_id,sample_type,sequence_type,filetype,info,filepath
+PATIENT1,PATIENT1,PATIENT1-T,tumor,dna,bam,library_id:F115103,/path/to/PATIENT1-T.dna.bam
+```
+
+Note that read groups present in the source alignment are not preserved; all reads are assigned a single read group derived from the sample and library identifiers.
+
+Currently, `--realign_bam` is only supported in `--mode wgts`.
 
 #### REDUX alignments
 

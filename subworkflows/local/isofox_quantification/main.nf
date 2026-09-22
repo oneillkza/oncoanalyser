@@ -27,6 +27,7 @@ workflow ISOFOX_QUANTIFICATION {
     // Params
     isofox_functions       //  string: [optional]  Isofox functions
     isofox_read_length     //  string: [mandatory] Isofox read length
+    realign_bam            // boolean: [mandatory] realigning from existing alignments
 
     main:
     // Select input sources then sort
@@ -36,8 +37,9 @@ workflow ISOFOX_QUANTIFICATION {
         .map { meta, tumor_aln, tumor_idx ->
             return [
                 meta,
-                Utils.selectCurrentOrExisting(tumor_aln, meta, Constants.INPUT.ALN_RNA_TUMOR),
-                Utils.selectCurrentOrExisting(tumor_idx, meta, Constants.INPUT.IDX_RNA_TUMOR),
+		Utils.selectRealignedOrExisting(tumor_aln, meta, Constants.INPUT.ALN_RNA_TUMOR, realign_bam),
+                Utils.selectRealignedOrExisting(tumor_idx, meta, Constants.INPUT.IDX_RNA_TUMOR, realign_bam),
+
             ]
         }
         .branch { meta, tumor_aln, tumor_idx ->

@@ -22,6 +22,7 @@ workflow LILAC_CALLING {
     // Params
     sequencing_platform // string:  [mandatory] sequencing platform
     targeted_mode       // boolean: [mandatory] Set targeted mode
+    realign_bam         // boolean: [mandatory] realigning from existing alignment
 
     main:
     // Select input sources then sort
@@ -47,8 +48,8 @@ workflow LILAC_CALLING {
                 normal_dna_idx,
                 tumor_dna_aln,
                 tumor_dna_idx,
-                Utils.selectCurrentOrExisting(tumor_rna_aln, meta, Constants.INPUT.ALN_RNA_TUMOR),
-                Utils.selectCurrentOrExisting(tumor_rna_idx, meta, Constants.INPUT.IDX_RNA_TUMOR),
+		Utils.selectRealignedOrExisting(tumor_rna_aln, meta, Constants.INPUT.ALN_RNA_TUMOR, realign_bam),
+                Utils.selectRealignedOrExisting(tumor_rna_idx, meta, Constants.INPUT.IDX_RNA_TUMOR, realign_bam),
                 Utils.selectCurrentOrExisting(purple_dir, meta, Constants.INPUT.PURPLE_DIR),
             ]
 
