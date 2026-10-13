@@ -140,6 +140,7 @@ workflow PURITY_ESTIMATE {
             targeted_mode,
             params.redux_umi_enabled,
             params.redux_umi_duplex_delim,
+            false,  // realign_bam
         )
 
         ch_redux_tumor_out = ch_redux_tumor_out.mix(REDUX_PROCESSING.out.tumor_dir)

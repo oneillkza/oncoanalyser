@@ -153,6 +153,7 @@ workflow PANEL_RESOURCE_CREATION {
         true,  // targeted_mode
         params.redux_umi_enabled,
         params.redux_umi_duplex_delim,
+        false,  // realign_bam
     )
 
     // channel: [ meta, redux_dir ]
@@ -179,6 +180,7 @@ workflow PANEL_RESOURCE_CREATION {
         [],  // isofox_tpm_norm
         'TRANSCRIPT_COUNTS',
         isofox_read_length,
+        false,  // realign_bam
     )
 
     // channel: [ meta, isofox_dir ]

@@ -192,6 +192,7 @@ workflow TARGETED {
             true,  // targeted_mode
             params.redux_umi_enabled,
             params.redux_umi_duplex_delim,
+            false,  // realign_bam
         )
 
         ch_redux_tumor_out = ch_redux_tumor_out.mix(REDUX_PROCESSING.out.tumor_dir)
@@ -260,6 +261,7 @@ workflow TARGETED {
             isofox_tpm_norm,
             params.isofox_functions,
             isofox_read_length,
+            false,  // realign_bam
         )
 
         ch_isofox_out = ch_isofox_out.mix(ISOFOX_QUANTIFICATION.out.isofox_dir)
@@ -636,6 +638,7 @@ workflow TARGETED {
             ref_data.genome_fai,
             ref_data.genome_dict,
             ref_data.genome_img,
+            false,  // realign_bam
         )
 
     }
@@ -659,6 +662,7 @@ workflow TARGETED {
             hmf_data.lilac_resources,
             params.sequencing_platform,
             true,  // targeted_mode,
+            false,  // realign_bam
         )
 
         ch_lilac_out = ch_lilac_out.mix(LILAC_CALLING.out.lilac_dir)
